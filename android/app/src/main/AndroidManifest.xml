@@ -4,6 +4,7 @@
 
     <application
         android:allowBackup="true"
+        android:hardwareAccelerated="true"
         android:label="Rubik's Cube Solver"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
