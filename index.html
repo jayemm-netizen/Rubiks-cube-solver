@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0b1020">
   <title>Rubik's Cube Solver</title>
-  <link rel="stylesheet" href="style.css?v=9">
+  <link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
   <main class="app">
@@ -31,9 +31,9 @@
 
   <section id="scanner" class="scanner hidden" aria-label="Cube camera scanner">
     <div class="scanner-panel">
-      <div class="scanner-head"><div><span class="eyebrow">CAMERA SCANNER</span><h2>Scan <span id="scan-face-name">FRONT</span></h2><span id="scan-progress">Face 1 of 6</span></div><button id="scan-close" class="ghost">✕</button></div>
+      <div class="scanner-head"><div><span class="eyebrow">CAMERA SCANNER</span><h2>Scan <span id="scan-face-name">UP</span></h2><span id="scan-progress">Face 1 of 6</span></div><button id="scan-close" class="ghost">✕</button></div>
       <div class="camera-stage"><video id="scan-video" autoplay playsinline muted></video><div class="scan-frame"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div><div class="scan-tip">Keep the stickers flat inside the guide</div></div>
-      <div id="scan-status" class="scan-status">Starting camera…</div>
+      <div id="scan-status" class="scan-status">Tap Scan Cube to start the camera.</div>
       <div id="scan-capture" class="scan-actions"><button id="scan-capture-btn" class="primary">📸 Scan Face</button></div>
       <div id="scan-review" class="hidden"><h3>Review colors</h3><div id="scan-review-grid" class="scan-review-grid"></div><p class="review-note">Tap a sticker to cycle its detected color.</p><div class="scan-actions"><button id="scan-rescan" class="secondary">Rescan</button><button id="scan-accept" class="primary">Accept Face</button></div></div>
     </div>
@@ -44,6 +44,6 @@
   <script src="app.js?v=9"></script>
   <script src="https://unpkg.com/three@0.159.0/build/three.min.js"></script>
   <script src="viewer.js?v=9"></script>
-  <script src="camera.js?v=1"></script>
+  <script src="camera.js?v=2"></script>
 </body>
 </html>
