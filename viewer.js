@@ -20,6 +20,8 @@
   const key = new T.DirectionalLight(0xffffff, 2.5); key.position.set(5,8,9); scene.add(key);
   const fill = new T.DirectionalLight(0x8fb8ff, 1.1); fill.position.set(-6,2,-4); scene.add(fill);
 
+  // Fixed viewing angle: top + front + right. The cube itself still animates,
+  // but the user cannot rotate the camera/viewer.
   const cubeRoot = new T.Group();
   cubeRoot.rotation.set(T.MathUtils.degToRad(-18), T.MathUtils.degToRad(-30), 0);
   scene.add(cubeRoot);
@@ -30,9 +32,6 @@
   const inner = new T.BoxGeometry(cubeSize, cubeSize, cubeSize);
   const stickerGeo = new T.PlaneGeometry(0.78, 0.78);
 
-  // The solver labels faces by position (U/R/F/D/L/B), while the actual sticker
-  // colors come from the center stickers entered by the user. Centers therefore
-  // determine how the normalized solver state should look in the 3D viewer.
   function readDisplayColors(){
     const result={...defaultColors};
     const titleToFace={UP:'U',RIGHT:'R',FRONT:'F',DOWN:'D',LEFT:'L',BACK:'B'};
@@ -179,12 +178,10 @@
   document.getElementById('prev').addEventListener('click',()=>setStep(viewerStep-1));
   document.getElementById('next').addEventListener('click',()=>setStep(viewerStep+1));
   document.getElementById('reset').addEventListener('click',()=>{moves=[];viewerStep=0;playing=false;generation++;playBtn.textContent='▶ Play';displayColors={...defaultColors};buildSolved();syncLabel()});
-  document.getElementById('scramble').addEventListener('click',()=>{moves=[];viewerStep=0;playing=false;generation++;playBtn.textContent='▶ Play';buildSolved();syncLabel()});
+  document.getElementById('scramble').addEventListener('click',()=>{moves=[];viewerStep=0;playing=false;generation++;playBtn.textContent='▶ Play';displayColors={...defaultColors};buildSolved();syncLabel()});
 
-  let drag=false,lastX=0,lastY=0;
-  host.addEventListener('pointerdown',e=>{drag=true;lastX=e.clientX;lastY=e.clientY;host.setPointerCapture(e.pointerId);host.classList.add('dragging')});
-  host.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-lastX,dy=e.clientY-lastY;lastX=e.clientX;lastY=e.clientY;cubeRoot.rotation.y+=dx*.012;cubeRoot.rotation.x+=dy*.012});
-  const end=()=>{drag=false;host.classList.remove('dragging')}; host.addEventListener('pointerup',end);host.addEventListener('pointercancel',end);
+  // Viewer rotation is intentionally locked. The fixed cubeRoot rotation above
+  // keeps the same top/front/right perspective throughout playback.
 
   function refresh(){
     const next=solutionMoves(); if(!next.length)return;
