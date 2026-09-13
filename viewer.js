@@ -115,10 +115,12 @@
   function parseMove(move){
     const face=move[0]; const prime=move.includes("'"); const twice=move.includes('2');
     let axis='x', layer=1, dir=1;
-    if(face==='R'){axis='x';layer=1;dir=1}
-    if(face==='L'){axis='x';layer=-1;dir=-1}
-    if(face==='U'){axis='y';layer=1;dir=1}
-    if(face==='D'){axis='y';layer=-1;dir=-1}
+    // Signs follow standard Singmaster notation when the cube is viewed
+    // from outside the named face: bare moves are clockwise, primes reverse.
+    if(face==='R'){axis='x';layer=1;dir=-1}
+    if(face==='L'){axis='x';layer=-1;dir=1}
+    if(face==='U'){axis='y';layer=1;dir=-1}
+    if(face==='D'){axis='y';layer=-1;dir=1}
     if(face==='F'){axis='z';layer=1;dir=-1}
     if(face==='B'){axis='z';layer=-1;dir=1}
     if(prime) dir*=-1;
@@ -149,7 +151,7 @@
     layer.updateMatrixWorld(true); finishLayer(layer,selected);
   }
 
-  function animateQuarter(m, ms, selected, showIndicator=false){
+  function animateQuarter(m, ms, selected){
     return new Promise(resolve=>{
       const layer=new T.Group();
       cubeRoot.add(layer); selected.forEach(c=>layer.attach(c.mesh));
@@ -171,16 +173,12 @@
     const m=parseMove(move);
     showTurnIndicator(move, reverseIndicator);
     const selected=selectedFor(m);
-
-    // A 2x move is deliberately animated as two separate 90° turns.
-    // Each quarter-turn uses the normal move duration, so a 2x turn takes 2x as long.
     if(m.twice){
       await animateQuarter(m,ms,selected);
       await animateQuarter(m,ms,selected);
       hideTurnIndicator();
       return;
     }
-
     await animateQuarter(m,ms,selected);
     hideTurnIndicator();
   }
@@ -221,7 +219,7 @@
     busy=true;
     const move=delta>0 ? moves[viewerStep] : inverse(moves[viewerStep-1]);
     const indicatorMove=delta>0 ? moves[viewerStep] : moves[viewerStep-1];
-    await animateMove(move,Number(speed.value)||700,delta<0 && indicatorMove.includes('2') ? true : false);
+    await animateMove(move,Number(speed.value)||700,delta<0 && indicatorMove.includes('2'));
     viewerStep=target;
     syncLabel();
     busy=false;
