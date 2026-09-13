@@ -7,7 +7,9 @@
   let displayColors = {...defaultColors};
   const scene = new T.Scene();
   const camera = new T.PerspectiveCamera(34, 1, 0.1, 100);
-  camera.position.set(5.3, 4.4, 7.2);
+  // Symmetric corner/vertex view: camera looks directly toward a cube corner,
+  // so the three visible faces have equal apparent width.
+  camera.position.set(6.5, 6.5, 6.5);
   camera.lookAt(0, 0, 0);
 
   const renderer = new T.WebGLRenderer({antialias:true, alpha:true});
@@ -20,10 +22,10 @@
   const key = new T.DirectionalLight(0xffffff, 2.5); key.position.set(5,8,9); scene.add(key);
   const fill = new T.DirectionalLight(0x8fb8ff, 1.1); fill.position.set(-6,2,-4); scene.add(fill);
 
-  // Fixed viewing angle: top + front + right. The cube itself still animates,
-  // but the user cannot rotate the camera/viewer.
+  // Fixed corner view: the camera itself provides the equal top/front/right
+  // perspective. The cube is not additionally rotated.
   const cubeRoot = new T.Group();
-  cubeRoot.rotation.set(T.MathUtils.degToRad(-18), T.MathUtils.degToRad(-30), 0);
+  cubeRoot.rotation.set(0, 0, 0);
   scene.add(cubeRoot);
 
   const cubies = [];
@@ -180,8 +182,8 @@
   document.getElementById('reset').addEventListener('click',()=>{moves=[];viewerStep=0;playing=false;generation++;playBtn.textContent='▶ Play';displayColors={...defaultColors};buildSolved();syncLabel()});
   document.getElementById('scramble').addEventListener('click',()=>{moves=[];viewerStep=0;playing=false;generation++;playBtn.textContent='▶ Play';displayColors={...defaultColors};buildSolved();syncLabel()});
 
-  // Viewer rotation is intentionally locked. The fixed cubeRoot rotation above
-  // keeps the same top/front/right perspective throughout playback.
+  // Viewer rotation is intentionally locked. The symmetric camera creates the
+  // requested corner-centered view with three equally presented faces.
 
   function refresh(){
     const next=solutionMoves(); if(!next.length)return;
