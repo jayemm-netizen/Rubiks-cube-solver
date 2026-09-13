@@ -1,4 +1,4 @@
-const scanner={faceIndex:0,faces:['U','R','F','D','L','B'],stream:null,video:null,canvas:null,detected:[],active:false};
+const scanner={faceIndex:0,faces:['U','R','F','D','L','B'],stream:null,video:null,canvas:null,detected:[],active:false,starting:false};
 const scanColors=['U','R','F','D','L','B'];
 
 function openScanner(){
@@ -7,25 +7,60 @@ function openScanner(){
   modal.classList.remove('hidden');
   scanner.faceIndex=0;
   scanner.active=true;
+  scanner.video=document.getElementById('scan-video');
   updateScannerUI();
   startCamera();
 }
 async function startCamera(){
+  if(scanner.starting)return;
+  scanner.starting=true;
   stopCamera();
+  const video=document.getElementById('scan-video');
+  scanner.video=video;
+  video.pause();
+  video.srcObject=null;
+  video.removeAttribute('src');
+  video.load();
+  setScanStatus('Requesting camera access…');
   try{
-    scanner.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
-    scanner.video=document.getElementById('scan-video');
-    scanner.video.srcObject=scanner.stream;
-    await scanner.video.play();
-    setScanStatus('Center the cube face inside the 3×3 guide, then tap Scan Face.');
+    let stream;
+    try{
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
+    }catch(firstError){
+      console.warn('Preferred camera request failed, trying basic video.',firstError);
+      stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+    }
+    scanner.stream=stream;
+    video.srcObject=stream;
+    video.muted=true;
+    video.playsInline=true;
+    await waitForVideoReady(video);
+    await video.play();
+    setScanStatus('Camera ready. Center the cube face inside the 3×3 guide, then tap Scan Face.');
   }catch(e){
-    console.error(e);
-    setScanStatus(e.name==='NotAllowedError'?'Camera permission was denied. Allow camera access and try again.':'Unable to start the camera.');
-  }
+    console.error('Camera start failed:',e);
+    if(e.name==='NotAllowedError')setScanStatus('Camera permission was denied. In Chrome, allow Camera for this site, then tap Scan Cube again.');
+    else if(e.name==='NotFoundError')setScanStatus('No camera was found on this device.');
+    else if(e.name==='NotReadableError')setScanStatus('The camera is busy or unavailable. Close other apps using the camera, then try again.');
+    else if(e.name==='SecurityError')setScanStatus('Camera access was blocked by the browser security settings.');
+    else setScanStatus(`Unable to start the camera (${e.name||'unknown error'}). Tap Scan Cube to try again.`);
+    stopCamera();
+  }finally{scanner.starting=false}
+}
+function waitForVideoReady(video){
+  if(video.readyState>=2&&video.videoWidth>0&&video.videoHeight>0)return Promise.resolve();
+  return new Promise((resolve,reject)=>{
+    let done=false;
+    const finish=()=>{if(done)return;done=true;clearTimeout(timer);video.removeEventListener('loadedmetadata',onReady);video.removeEventListener('canplay',onReady);resolve()};
+    const onReady=()=>{if(video.videoWidth>0&&video.videoHeight>0)finish()};
+    const timer=setTimeout(()=>{if(done)return;done=true;video.removeEventListener('loadedmetadata',onReady);video.removeEventListener('canplay',onReady);reject(new Error('Camera video did not become ready.'))},8000);
+    video.addEventListener('loadedmetadata',onReady,{once:false});
+    video.addEventListener('canplay',onReady,{once:false});
+  });
 }
 function stopCamera(){if(scanner.stream){scanner.stream.getTracks().forEach(t=>t.stop());scanner.stream=null}}
-function closeScanner(){scanner.active=false;stopCamera();document.getElementById('scanner').classList.add('hidden')}
-function setScanStatus(text){document.getElementById('scan-status').textContent=text}
+function closeScanner(){scanner.active=false;stopCamera();const video=document.getElementById('scan-video');if(video){video.pause();video.srcObject=null}document.getElementById('scanner').classList.add('hidden')}
+function setScanStatus(text){const el=document.getElementById('scan-status');if(el)el.textContent=text}
 function updateScannerUI(){
   const face=scanner.faces[scanner.faceIndex];
   document.getElementById('scan-face-name').textContent={U:'UP',R:'RIGHT',F:'FRONT',D:'DOWN',L:'LEFT',B:'BACK'}[face];
@@ -34,7 +69,8 @@ function updateScannerUI(){
   document.getElementById('scan-capture').classList.remove('hidden');
 }
 function captureFace(){
-  const video=scanner.video;if(!video||video.readyState<2){setScanStatus('Camera is still starting…');return}
+  const video=scanner.video;
+  if(!scanner.stream||!video||video.readyState<2||!video.videoWidth){setScanStatus('Camera is not ready yet. Please wait a moment or tap Scan Cube again.');return}
   scanner.canvas=document.createElement('canvas');
   scanner.canvas.width=video.videoWidth;scanner.canvas.height=video.videoHeight;
   const ctx=scanner.canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(video,0,0);
@@ -71,6 +107,7 @@ function renderScanReview(){
   setScanStatus('Review the detected colors. Tap any sticker to cycle through colors.');
 }
 function acceptFace(){
+  if(!scanner.detected.length){setScanStatus('Scan a face first.');return}
   const face=scanner.faces[scanner.faceIndex];
   if(window.applyScannedFace)window.applyScannedFace(face,scanner.detected.slice());
   if(scanner.faceIndex<5){scanner.faceIndex++;updateScannerUI();setScanStatus(`Face ${face} saved. Now scan the ${document.getElementById('scan-face-name').textContent} face.`)}
