@@ -5,6 +5,11 @@ on:
   push:
     paths:
       - 'android/**'
+      - 'index.html'
+      - 'app.js'
+      - 'viewer.js'
+      - 'camera.js'
+      - 'style.css'
       - '.github/workflows/build-apk.yml'
 
 jobs:
