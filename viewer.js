@@ -14,7 +14,22 @@
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.outputColorSpace = T.SRGBColorSpace;
   renderer.setClearColor(0x000000, 0);
+  host.style.position = 'relative';
   host.appendChild(renderer.domElement);
+
+  const turnIndicator = document.createElement('div');
+  turnIndicator.style.cssText = 'position:absolute;top:10px;left:50%;transform:translateX(-50%);padding:7px 12px;border-radius:999px;background:rgba(11,16,32,.9);color:#fff;font:700 13px/1.1 system-ui,sans-serif;letter-spacing:.3px;opacity:0;transition:opacity .12s ease;pointer-events:none;z-index:5;white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,.22);';
+  host.appendChild(turnIndicator);
+
+  function showTurnIndicator(move, reverse=false){
+    if(move && move.includes('2')){
+      turnIndicator.textContent = `${reverse ? '↺' : '↻'} 2× TURN • 180°`;
+      turnIndicator.style.opacity = '1';
+    } else {
+      turnIndicator.style.opacity = '0';
+    }
+  }
+  function hideTurnIndicator(){ turnIndicator.style.opacity = '0'; }
 
   scene.add(new T.HemisphereLight(0xffffff, 0x26304a, 2.1));
   const key = new T.DirectionalLight(0xffffff, 2.5); key.position.set(5,8,9); scene.add(key);
@@ -54,8 +69,6 @@
     return out;
   }
 
-  // Convert a cubie's x/y/z position to the corresponding facelet index.
-  // These coordinates match cubejs' standard URFDLB facelet layout.
   function faceletIndex(face,x,y,z){
     let row,col;
     if(face==='F'){ row=1-y; col=x+1; }
@@ -136,7 +149,8 @@
     layer.updateMatrixWorld(true); finishLayer(layer,selected);
   }
 
-  function animateMove(move, ms){
+  function animateMove(move, ms, reverseIndicator=false){
+    showTurnIndicator(move, reverseIndicator);
     return new Promise(resolve=>{
       const m=parseMove(move), selected=selectedFor(m), layer=new T.Group();
       cubeRoot.add(layer); selected.forEach(c=>layer.attach(c.mesh));
@@ -147,15 +161,16 @@
         if(m.axis==='x') layer.rotation.x=a;
         if(m.axis==='y') layer.rotation.y=a;
         if(m.axis==='z') layer.rotation.z=a;
-        if(t<1){requestAnimationFrame(frame)}else{finishLayer(layer,selected);resolve()}
+        if(t<1){requestAnimationFrame(frame)}else{finishLayer(layer,selected);hideTurnIndicator();resolve()}
       }
       requestAnimationFrame(frame);
     });
   }
 
+  function inverse(m){ return m.endsWith('2') ? m : (m.endsWith("'") ? m.slice(0,-1) : m+"'"); }
   function solutionMoves(){ return [...document.querySelectorAll('#moves .move')].map(b=>b.textContent.trim()).filter(Boolean); }
 
-  let moves=[], viewerStep=0, playing=false, generation=0;
+  let moves=[], viewerStep=0, playing=false, busy=false, generation=0;
   const playBtn=document.getElementById('viewer-play'), prevBtn=document.getElementById('viewer-prev'), nextBtn=document.getElementById('viewer-next'), speed=document.getElementById('viewer-speed');
   const stepLabel=document.getElementById('step-label'), current=document.getElementById('current-move');
 
@@ -166,7 +181,7 @@
   }
 
   function resetToStart(){
-    generation++; playing=false; playBtn.textContent='▶ Play';
+    generation++; playing=false; busy=false; playBtn.textContent='▶ Play'; hideTurnIndicator();
     displayColors=readDisplayColors();
     buildFromInput();
     viewerStep=0; syncLabel();
@@ -174,11 +189,24 @@
 
   async function setStep(n){
     const target=Math.max(0,Math.min(moves.length,n));
-    generation++; playing=false; playBtn.textContent='▶ Play';
+    generation++; playing=false; busy=false; playBtn.textContent='▶ Play'; hideTurnIndicator();
     displayColors=readDisplayColors();
     buildFromInput();
     for(let i=0;i<target;i++) moveInstant(moves[i]);
     viewerStep=target; syncLabel();
+  }
+
+  async function stepBy(delta){
+    if(busy || playing) return;
+    const target=Math.max(0,Math.min(moves.length,viewerStep+delta));
+    if(target===viewerStep) return;
+    busy=true;
+    const move=delta>0 ? moves[viewerStep] : inverse(moves[viewerStep-1]);
+    const indicatorMove=delta>0 ? moves[viewerStep] : moves[viewerStep-1];
+    await animateMove(move,Number(speed.value)||700,delta<0 && indicatorMove.includes('2') ? true : false);
+    viewerStep=target;
+    syncLabel();
+    busy=false;
   }
 
   async function play(){
@@ -194,12 +222,12 @@
   }
 
   playBtn.addEventListener('click',play);
-  prevBtn.addEventListener('click',()=>setStep(viewerStep-1));
-  nextBtn.addEventListener('click',()=>setStep(viewerStep+1));
-  document.getElementById('prev').addEventListener('click',()=>setStep(viewerStep-1));
-  document.getElementById('next').addEventListener('click',()=>setStep(viewerStep+1));
-  document.getElementById('reset').addEventListener('click',()=>{moves=[];viewerStep=0;playing=false;generation++;playBtn.textContent='▶ Play';displayColors={...defaultColors};buildFromInput();syncLabel()});
-  document.getElementById('scramble').addEventListener('click',()=>{moves=[];viewerStep=0;playing=false;generation++;playBtn.textContent='▶ Play';displayColors={...defaultColors};buildFromInput();syncLabel()});
+  prevBtn.addEventListener('click',()=>stepBy(-1));
+  nextBtn.addEventListener('click',()=>stepBy(1));
+  document.getElementById('prev').addEventListener('click',()=>stepBy(-1));
+  document.getElementById('next').addEventListener('click',()=>stepBy(1));
+  document.getElementById('reset').addEventListener('click',()=>{moves=[];viewerStep=0;playing=false;busy=false;generation++;playBtn.textContent='▶ Play';hideTurnIndicator();displayColors={...defaultColors};buildFromInput();syncLabel()});
+  document.getElementById('scramble').addEventListener('click',()=>{moves=[];viewerStep=0;playing=false;busy=false;generation++;playBtn.textContent='▶ Play';hideTurnIndicator();displayColors={...defaultColors};buildFromInput();syncLabel()});
 
   function refresh(){
     const next=solutionMoves(); if(!next.length)return;
