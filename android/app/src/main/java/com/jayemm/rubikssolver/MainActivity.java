@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.view.View;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -14,7 +15,7 @@ import android.widget.FrameLayout;
 
 public class MainActivity extends Activity {
     private static final int CAMERA_REQUEST = 1001;
-    private static final String APP_URL = "https://jayemm-netizen.github.io/Rubiks-cube-solver/";
+    private static final String APP_URL = "https://jayemm-netizen.github.io/Rubiks-cube-solver/?appbuild=3";
     private WebView webView;
 
     @Override
@@ -23,6 +24,7 @@ public class MainActivity extends Activity {
 
         FrameLayout root = new FrameLayout(this);
         webView = new WebView(this);
+        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         root.addView(webView, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
