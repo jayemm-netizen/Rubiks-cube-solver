@@ -79,8 +79,6 @@
       c.pos.x=Math.round(c.mesh.position.x/pitch);
       c.pos.y=Math.round(c.mesh.position.y/pitch);
       c.pos.z=Math.round(c.mesh.position.z/pitch);
-      const q=c.mesh.quaternion;
-      q.x=Math.abs(q.x)<0.001?0:q.x; q.y=Math.abs(q.y)<0.001?0:q.y; q.z=Math.abs(q.z)<0.001?0:q.z; q.w=Math.abs(q.w)<0.001?0:q.w;
     });
     cubeRoot.remove(group);
   }
@@ -155,6 +153,10 @@
   playBtn.addEventListener('click',play);
   prevBtn.addEventListener('click',()=>setStep(viewerStep-1));
   nextBtn.addEventListener('click',()=>setStep(viewerStep+1));
+  document.getElementById('prev').addEventListener('click',()=>setStep(viewerStep-1));
+  document.getElementById('next').addEventListener('click',()=>setStep(viewerStep+1));
+  document.getElementById('reset').addEventListener('click',()=>{moves=[];viewerStep=0;playing=false;generation++;playBtn.textContent='▶ Play';buildSolved();syncLabel()});
+  document.getElementById('scramble').addEventListener('click',()=>{moves=[];viewerStep=0;playing=false;generation++;playBtn.textContent='▶ Play';buildSolved();syncLabel()});
 
   let drag=false,lastX=0,lastY=0;
   host.addEventListener('pointerdown',e=>{drag=true;lastX=e.clientX;lastY=e.clientY;host.setPointerCapture(e.pointerId);host.classList.add('dragging')});
