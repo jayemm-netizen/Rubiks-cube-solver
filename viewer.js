@@ -3,7 +3,8 @@
   if (!host || !window.THREE) return;
 
   const T = THREE;
-  const colors = { U:0xf8f8f8, R:0xe53935, F:0x39b54a, D:0xffd92f, L:0xff8c2f, B:0x3385ff };
+  const defaultColors = { U:0xf8f8f8, R:0xe53935, F:0x39b54a, D:0xffd92f, L:0xff8c2f, B:0x3385ff };
+  let displayColors = {...defaultColors};
   const scene = new T.Scene();
   const camera = new T.PerspectiveCamera(34, 1, 0.1, 100);
   camera.position.set(5.3, 4.4, 7.2);
@@ -29,6 +30,25 @@
   const inner = new T.BoxGeometry(cubeSize, cubeSize, cubeSize);
   const stickerGeo = new T.PlaneGeometry(0.78, 0.78);
 
+  // The solver labels faces by position (U/R/F/D/L/B), while the actual sticker
+  // colors come from the center stickers entered by the user. Centers therefore
+  // determine how the normalized solver state should look in the 3D viewer.
+  function readDisplayColors(){
+    const result={...defaultColors};
+    const titleToFace={UP:'U',RIGHT:'R',FRONT:'F',DOWN:'D',LEFT:'L',BACK:'B'};
+    document.querySelectorAll('#cube-net .face').forEach(faceEl=>{
+      const title=(faceEl.querySelector('.face-title')?.textContent||'').trim();
+      const f=titleToFace[title];
+      if(!f)return;
+      const center=faceEl.querySelectorAll('.sticker')[4];
+      if(center){
+        const css=getComputedStyle(center).backgroundColor;
+        try{result[f]=new T.Color(css).getHex()}catch{}
+      }
+    });
+    return result;
+  }
+
   function sticker(material, pos, rot){
     const m = new T.Mesh(stickerGeo, material);
     m.position.copy(pos); m.rotation.set(rot.x,rot.y,rot.z); return m;
@@ -38,7 +58,7 @@
     const g = new T.Group();
     g.position.set(x*pitch,y*pitch,z*pitch);
     g.add(new T.Mesh(inner, black));
-    const makeMat = c => new T.MeshStandardMaterial({color:colors[c],roughness:.38,metalness:.03,side:T.DoubleSide});
+    const makeMat = c => new T.MeshStandardMaterial({color:displayColors[c],roughness:.38,metalness:.03,side:T.DoubleSide});
     const off = cubeSize/2 + .006;
     if(x===1) g.add(sticker(makeMat('R'),new T.Vector3(off,0,0),new T.Vector3(0,Math.PI/2,0)));
     if(x===-1) g.add(sticker(makeMat('L'),new T.Vector3(-off,0,0),new T.Vector3(0,-Math.PI/2,0)));
@@ -123,7 +143,9 @@
   }
 
   function resetToStart(){
-    generation++; playing=false; playBtn.textContent='▶ Play'; buildSolved();
+    generation++; playing=false; playBtn.textContent='▶ Play';
+    displayColors=readDisplayColors();
+    buildSolved();
     const scramble=[...moves].reverse().map(inverse);
     scramble.forEach(moveInstant); viewerStep=0; syncLabel();
   }
@@ -131,6 +153,7 @@
   async function setStep(n){
     const target=Math.max(0,Math.min(moves.length,n));
     generation++; playing=false; playBtn.textContent='▶ Play';
+    displayColors=readDisplayColors();
     buildSolved();
     const scramble=[...moves].reverse().map(inverse);
     scramble.forEach(moveInstant);
@@ -155,7 +178,7 @@
   nextBtn.addEventListener('click',()=>setStep(viewerStep+1));
   document.getElementById('prev').addEventListener('click',()=>setStep(viewerStep-1));
   document.getElementById('next').addEventListener('click',()=>setStep(viewerStep+1));
-  document.getElementById('reset').addEventListener('click',()=>{moves=[];viewerStep=0;playing=false;generation++;playBtn.textContent='▶ Play';buildSolved();syncLabel()});
+  document.getElementById('reset').addEventListener('click',()=>{moves=[];viewerStep=0;playing=false;generation++;playBtn.textContent='▶ Play';displayColors={...defaultColors};buildSolved();syncLabel()});
   document.getElementById('scramble').addEventListener('click',()=>{moves=[];viewerStep=0;playing=false;generation++;playBtn.textContent='▶ Play';buildSolved();syncLabel()});
 
   let drag=false,lastX=0,lastY=0;
@@ -173,6 +196,6 @@
   observer.observe(document.getElementById('solution-card'),{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
 
   function resize(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(Math.max(1,w),Math.max(1,h),false);camera.aspect=w/h;camera.updateProjectionMatrix()}
-  window.addEventListener('resize',resize); resize(); buildSolved();
+  window.addEventListener('resize',resize); resize(); displayColors=readDisplayColors(); buildSolved();
   renderer.setAnimationLoop(()=>renderer.render(scene,camera));
 })();
