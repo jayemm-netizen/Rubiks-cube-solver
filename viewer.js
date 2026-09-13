@@ -23,7 +23,7 @@
 
   function showTurnIndicator(move, reverse=false){
     if(move && move.includes('2')){
-      turnIndicator.textContent = `${reverse ? '↺' : '↻'} 2× TURN • 180°`;
+      turnIndicator.textContent = `${reverse ? '↺' : '↻'} 2× TURN • 2 × 90°`;
       turnIndicator.style.opacity = '1';
     } else {
       turnIndicator.style.opacity = '0';
@@ -122,7 +122,7 @@
     if(face==='F'){axis='z';layer=1;dir=-1}
     if(face==='B'){axis='z';layer=-1;dir=1}
     if(prime) dir*=-1;
-    return {axis,layer,angle:dir*(twice?Math.PI:Math.PI/2)};
+    return {axis,layer,angle:dir*(twice?Math.PI:Math.PI/2),twice};
   }
 
   function selectedFor(m){ return cubies.filter(c => Math.round(c.pos[m.axis])===m.layer); }
@@ -149,22 +149,40 @@
     layer.updateMatrixWorld(true); finishLayer(layer,selected);
   }
 
-  function animateMove(move, ms, reverseIndicator=false){
-    showTurnIndicator(move, reverseIndicator);
+  function animateQuarter(m, ms, selected, showIndicator=false){
     return new Promise(resolve=>{
-      const m=parseMove(move), selected=selectedFor(m), layer=new T.Group();
+      const layer=new T.Group();
       cubeRoot.add(layer); selected.forEach(c=>layer.attach(c.mesh));
       const start=performance.now();
       function frame(now){
-        const t=Math.min(1,(now-start)/ms), e=1-Math.pow(1-t,3), a=m.angle*e;
+        const t=Math.min(1,(now-start)/ms), e=1-Math.pow(1-t,3), a=(m.angle>0?1:-1)*(Math.PI/2)*e;
         layer.rotation.set(0,0,0);
         if(m.axis==='x') layer.rotation.x=a;
         if(m.axis==='y') layer.rotation.y=a;
         if(m.axis==='z') layer.rotation.z=a;
-        if(t<1){requestAnimationFrame(frame)}else{finishLayer(layer,selected);hideTurnIndicator();resolve()}
+        if(t<1){requestAnimationFrame(frame)}
+        else{finishLayer(layer,selected);resolve()}
       }
       requestAnimationFrame(frame);
     });
+  }
+
+  async function animateMove(move, ms, reverseIndicator=false){
+    const m=parseMove(move);
+    showTurnIndicator(move, reverseIndicator);
+    const selected=selectedFor(m);
+
+    // A 2x move is deliberately animated as two separate 90° turns.
+    // Each quarter-turn uses the normal move duration, so a 2x turn takes 2x as long.
+    if(m.twice){
+      await animateQuarter(m,ms,selected);
+      await animateQuarter(m,ms,selected);
+      hideTurnIndicator();
+      return;
+    }
+
+    await animateQuarter(m,ms,selected);
+    hideTurnIndicator();
   }
 
   function inverse(m){ return m.endsWith('2') ? m : (m.endsWith("'") ? m.slice(0,-1) : m+"'"); }
