@@ -20,7 +20,6 @@
   const key = new T.DirectionalLight(0xffffff, 2.5); key.position.set(5,8,9); scene.add(key);
   const fill = new T.DirectionalLight(0x8fb8ff, 1.1); fill.position.set(-6,2,-4); scene.add(fill);
 
-  // Fixed symmetric corner view: camera is equally offset on X/Y/Z.
   const cubeRoot = new T.Group();
   cubeRoot.rotation.set(0, 0, 0);
   scene.add(cubeRoot);
@@ -47,16 +46,42 @@
     return result;
   }
 
+  function inputState(){
+    const s=window.rubiksViewerState;
+    if(!s)return null;
+    const out={};
+    for(const f of ['U','R','F','D','L','B']) out[f]=Array.isArray(s[f])?[...s[f]]:null;
+    return out;
+  }
+
+  // Convert a cubie's x/y/z position to the corresponding facelet index.
+  // These coordinates match cubejs' standard URFDLB facelet layout.
+  function faceletIndex(face,x,y,z){
+    let row,col;
+    if(face==='F'){ row=1-y; col=x+1; }
+    else if(face==='B'){ row=1-y; col=1-x; }
+    else if(face==='R'){ row=1-y; col=1-z; }
+    else if(face==='L'){ row=1-y; col=z+1; }
+    else if(face==='U'){ row=z+1; col=x+1; }
+    else if(face==='D'){ row=1-z; col=x+1; }
+    return row*3+col;
+  }
+
+  function inputStickerColor(face,x,y,z,s){
+    const value=s?.[face]?.[faceletIndex(face,x,y,z)];
+    return defaultColors[value] ?? displayColors[face];
+  }
+
   function sticker(material, pos, rot){
     const m = new T.Mesh(stickerGeo, material);
     m.position.copy(pos); m.rotation.set(rot.x,rot.y,rot.z); return m;
   }
 
-  function makeCubie(x,y,z){
+  function makeCubie(x,y,z,s){
     const g = new T.Group();
     g.position.set(x*pitch,y*pitch,z*pitch);
     g.add(new T.Mesh(inner, black));
-    const makeMat = c => new T.MeshStandardMaterial({color:displayColors[c],roughness:.38,metalness:.03,side:T.DoubleSide});
+    const makeMat = c => new T.MeshStandardMaterial({color:inputStickerColor(c,x,y,z,s),roughness:.38,metalness:.03,side:T.DoubleSide});
     const off = cubeSize/2 + .006;
     if(x===1) g.add(sticker(makeMat('R'),new T.Vector3(off,0,0),new T.Vector3(0,Math.PI/2,0)));
     if(x===-1) g.add(sticker(makeMat('L'),new T.Vector3(-off,0,0),new T.Vector3(0,-Math.PI/2,0)));
@@ -67,10 +92,11 @@
     const item={mesh:g,pos:{x,y,z}}; cubies.push(item); cubeRoot.add(g); return item;
   }
 
-  function buildSolved(){
+  function buildFromInput(){
     while(cubeRoot.children.length) cubeRoot.remove(cubeRoot.children[0]);
     cubies.length=0;
-    for(let x=-1;x<=1;x++) for(let y=-1;y<=1;y++) for(let z=-1;z<=1;z++) makeCubie(x,y,z);
+    const s=inputState();
+    for(let x=-1;x<=1;x++) for(let y=-1;y<=1;y++) for(let z=-1;z<=1;z++) makeCubie(x,y,z,s);
   }
 
   function parseMove(move){
@@ -127,7 +153,6 @@
     });
   }
 
-  function inverse(m){ return m.endsWith('2') ? m : (m.endsWith("'") ? m.slice(0,-1) : m+"'"); }
   function solutionMoves(){ return [...document.querySelectorAll('#moves .move')].map(b=>b.textContent.trim()).filter(Boolean); }
 
   let moves=[], viewerStep=0, playing=false, generation=0;
@@ -143,18 +168,15 @@
   function resetToStart(){
     generation++; playing=false; playBtn.textContent='▶ Play';
     displayColors=readDisplayColors();
-    buildSolved();
-    const scramble=[...moves].reverse().map(inverse);
-    scramble.forEach(moveInstant); viewerStep=0; syncLabel();
+    buildFromInput();
+    viewerStep=0; syncLabel();
   }
 
   async function setStep(n){
     const target=Math.max(0,Math.min(moves.length,n));
     generation++; playing=false; playBtn.textContent='▶ Play';
     displayColors=readDisplayColors();
-    buildSolved();
-    const scramble=[...moves].reverse().map(inverse);
-    scramble.forEach(moveInstant);
+    buildFromInput();
     for(let i=0;i<target;i++) moveInstant(moves[i]);
     viewerStep=target; syncLabel();
   }
@@ -176,8 +198,8 @@
   nextBtn.addEventListener('click',()=>setStep(viewerStep+1));
   document.getElementById('prev').addEventListener('click',()=>setStep(viewerStep-1));
   document.getElementById('next').addEventListener('click',()=>setStep(viewerStep+1));
-  document.getElementById('reset').addEventListener('click',()=>{moves=[];viewerStep=0;playing=false;generation++;playBtn.textContent='▶ Play';displayColors={...defaultColors};buildSolved();syncLabel()});
-  document.getElementById('scramble').addEventListener('click',()=>{moves=[];viewerStep=0;playing=false;generation++;playBtn.textContent='▶ Play';displayColors={...defaultColors};buildSolved();syncLabel()});
+  document.getElementById('reset').addEventListener('click',()=>{moves=[];viewerStep=0;playing=false;generation++;playBtn.textContent='▶ Play';displayColors={...defaultColors};buildFromInput();syncLabel()});
+  document.getElementById('scramble').addEventListener('click',()=>{moves=[];viewerStep=0;playing=false;generation++;playBtn.textContent='▶ Play';displayColors={...defaultColors};buildFromInput();syncLabel()});
 
   function refresh(){
     const next=solutionMoves(); if(!next.length)return;
@@ -189,6 +211,6 @@
   observer.observe(document.getElementById('solution-card'),{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
 
   function resize(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(Math.max(1,w),Math.max(1,h),false);camera.aspect=w/h;camera.updateProjectionMatrix()}
-  window.addEventListener('resize',resize); resize(); displayColors=readDisplayColors(); buildSolved();
+  window.addEventListener('resize',resize); resize(); displayColors=readDisplayColors(); buildFromInput();
   renderer.setAnimationLoop(()=>renderer.render(scene,camera));
 })();
