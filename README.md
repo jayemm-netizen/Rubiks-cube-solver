@@ -20,7 +20,7 @@ A mobile-friendly 3×3 Rubik's Cube solver built with HTML, CSS and JavaScript.
 
 Tap **Scan Cube**, allow camera access, and scan the six faces in order: **Up → Right → Front → Down → Left → Back**. The scanner samples the center of each sticker, shows the detected colors for review, and lets you tap any sticker to cycle its color before accepting the face.
 
-Camera access uses the browser's standard `getUserMedia()` API and requires HTTPS or another secure context. citeturn0search0
+Camera access uses the browser's standard `getUserMedia()` API and requires HTTPS or another secure context. The GitHub Pages deployment is HTTPS. 
 
 ## Run locally
 
