@@ -15,7 +15,7 @@ import android.widget.FrameLayout;
 
 public class MainActivity extends Activity {
     private static final int CAMERA_REQUEST = 1001;
-    private static final String APP_URL = "https://jayemm-netizen.github.io/Rubiks-cube-solver/?appbuild=3";
+    private static final String APP_URL = "https://jayemm-netizen.github.io/Rubiks-cube-solver/?appbuild=4";
     private WebView webView;
 
     @Override
@@ -35,6 +35,9 @@ public class MainActivity extends Activity {
         webView.getSettings().setMediaPlaybackRequiresUserGesture(false);
         webView.getSettings().setBuiltInZoomControls(false);
         webView.getSettings().setDisplayZoomControls(false);
+        webView.getSettings().setCacheMode(android.webkit.WebSettings.LOAD_NO_CACHE);
+        webView.clearCache(true);
+        webView.clearHistory();
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
